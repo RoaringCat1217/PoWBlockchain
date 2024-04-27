@@ -14,3 +14,8 @@
 can proceed. Otherwise, it gets the most up-to-date blockchain from the tracker again.
 7. Miner needs to answer other miner's broadcasts and updates its blockchain correspondingly.
 8. Miner needs to keep track of all known miners. It can know new miners when new miners are broadcasting or syncing pool.
+
+## Tracker
+1. Tracker answers a user request with a random miner.
+2. Tracker answers register requests from miners and returns a list of all miners and up-to-date blockchain.
+3. Tracker answers heartbeats with the current number of miners.
