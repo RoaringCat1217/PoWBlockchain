@@ -13,11 +13,11 @@ type BlockHeader struct {
 	PrevHash  []byte
 	Summary   []byte
 	Timestamp int64
+	NPosts    int
 	Nonce     uint32
 }
 
 type Block struct {
 	header BlockHeader
-	NPosts int
 	Posts  []Post
 }
