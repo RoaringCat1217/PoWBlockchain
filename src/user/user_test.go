@@ -2,13 +2,11 @@ package user
 
 import (
 	"crypto/rsa"
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-	blockchain "github.com/cmu14736/s24-lab4-stilllearninggo"
 )
 
 func TestNewUser(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	blockchain "github.com/cmu14736/s24-lab4-stilllearninggo"
 )
 
 // User represents a user in the blockchain system
@@ -37,8 +36,8 @@ func (u *User) GetRandomMiner() (string, error) {
 	// Check the response status code
 	if resp.StatusCode == http.StatusNotFound {
 		return "", fmt.Errorf("no miner found")
-	} 
-	
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to get miner: %s", resp.Status)
 	}
