@@ -41,11 +41,6 @@
 
 **Method**: `POST`
 
-### A miner sends heartbeat
-**Command**: `/heartbeat`
-
-**Method**: `GET`
-
 ## Miner
 ### A user sends a read request
 **Command**: `/read`
