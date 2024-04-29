@@ -1,12 +1,13 @@
 package blockchain
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
 )
 
 // TARGET - A valid block hash has its first TARGET bits be zero.
-const TARGET = 16
+const TARGET = 20
 
 type PostBody struct {
 	Content   string
@@ -27,7 +28,6 @@ type BlockHeader struct {
 	PrevHash  []byte
 	Summary   []byte
 	Timestamp int64
-	NPosts    int
 	Nonce     uint32
 }
 
@@ -54,8 +54,8 @@ func (b *Block) Verify() bool {
 			return false
 		}
 	}
-	// NPosts have to match
-	if b.Header.NPosts != len(b.Posts) {
+	// verify the summary
+	if !bytes.Equal(b.Header.Summary, Hash(b.Posts)) {
 		return false
 	}
 	// verify all posts
@@ -126,7 +126,6 @@ func (b *Block) EncodeBase64() BlockBase64 {
 		PrevHash:  base64.StdEncoding.EncodeToString(b.Header.PrevHash),
 		Summary:   base64.StdEncoding.EncodeToString(b.Header.Summary),
 		Timestamp: b.Header.Timestamp,
-		NPosts:    b.Header.NPosts,
 		Nonce:     b.Header.Nonce,
 	}
 	for _, post := range b.Posts {
@@ -139,7 +138,6 @@ func (b *BlockBase64) DecodeBase64() (Block, error) {
 	decoded := Block{
 		Header: BlockHeader{
 			Timestamp: b.Timestamp,
-			NPosts:    b.NPosts,
 			Nonce:     b.Nonce,
 		},
 	}
