@@ -1,4 +1,4 @@
-package blockchain
+package user
 
 import (
 	"bytes"
@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	blockchain "github.com/cmu14736/s24-lab4-stilllearninggo"
 )
 
 // User represents a user in the blockchain system
 type User struct {
 	privateKey *rsa.PrivateKey
-	publicKey  *rsa.PublicKey
 	trackerURL string
 }
 
@@ -21,7 +21,6 @@ func NewUser(trackerURL string) *User {
 	privateKey := GenerateKey()
 	return &User{
 		privateKey: privateKey,
-		publicKey:  &privateKey.PublicKey,
 		trackerURL: trackerURL,
 	}
 }
@@ -34,6 +33,15 @@ func (u *User) GetRandomMiner() (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode == http.StatusNotFound {
+		return "", fmt.Errorf("no miner found")
+	} 
+	
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to get miner: %s", resp.Status)
+	}
 
 	// Decode the response body to get the miner's address
 	var miner string
@@ -68,15 +76,18 @@ func (u *User) ReadPosts(minerURL string) ([]Post, error) {
 func (u *User) WritePost(minerURL string, content string) error {
 	// Create a new post with the given content and the user's public key
 	post := Post{
-		User: u.publicKey,
+		User: &u.privateKey.PublicKey,
 		body: PostBody{
 			Content:   content,
 			Timestamp: time.Now().Unix(),
 		},
 	}
+
+	// Sign the post using the user's private key
 	post.Signature = Sign(u.privateKey, post.body)
+
+	// Encode the post to base64 and marshal it to JSON
 	postBytes, err := json.Marshal(post.EncodeBase64())
-	
 	if err != nil {
 		return err
 	}
