@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
-	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -19,12 +18,8 @@ type RegisterRequest struct {
 	Port int `json:"port"`
 }
 
-type RegisterResponse struct {
+type MinersResponse struct {
 	Ports []int `json:"ports"`
-}
-
-type GetMinerResponse struct {
-	Port int `json:"port"`
 }
 
 type Tracker struct {
@@ -50,8 +45,8 @@ func NewTracker(port int) *Tracker {
 		statusCode, response := tracker.registerHandler(request)
 		ctx.JSON(statusCode, response)
 	})
-	tracker.router.GET("/get_miner", func(ctx *gin.Context) {
-		statusCode, response := tracker.getMinerHandler()
+	tracker.router.GET("/get_miners", func(ctx *gin.Context) {
+		statusCode, response := tracker.getMinersHandler()
 		ctx.JSON(statusCode, response)
 	})
 
@@ -98,14 +93,14 @@ func (t *Tracker) registerHandler(request RegisterRequest) (int, any) {
 		defer t.lock.Unlock()
 		delete(t.miners, port)
 	})
-	var response RegisterResponse
+	var response MinersResponse
 	for port := range t.miners {
 		response.Ports = append(response.Ports, port)
 	}
 	return http.StatusOK, response
 }
 
-func (t *Tracker) getMinerHandler() (int, any) {
+func (t *Tracker) getMinersHandler() (int, any) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	if len(t.miners) == 0 {
@@ -116,7 +111,6 @@ func (t *Tracker) getMinerHandler() (int, any) {
 	for port := range t.miners {
 		ports = append(ports, port)
 	}
-	i := rand.Intn(len(ports))
-	response := GetMinerResponse{Port: ports[i]}
+	response := MinersResponse{Ports: ports}
 	return http.StatusOK, response
 }

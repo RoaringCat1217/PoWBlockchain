@@ -21,8 +21,8 @@
 
 # API
 ## Tracker
-### User requests a miner
-**Command**: `/get_miner`
+### User requests a list of miners
+**Command**: `/get_miners`
 
 **Method**: `GET`
 
@@ -31,7 +31,7 @@
 **Code**: `200 OK`
 ```json
 {
-  "port": 8080
+  "ports": [8080, 8081]
 }
 ```
 **Code**: `404 Not Found`
@@ -40,6 +40,13 @@
 **Command**: `/register`
 
 **Method**: `POST`
+
+**Code**: `200 OK`
+```json
+{
+  "ports": [8080, 8081]
+}
+```
 
 ## Miner
 ### A user sends a read request
