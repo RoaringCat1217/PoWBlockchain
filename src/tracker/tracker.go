@@ -1,6 +1,8 @@
 package tracker
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -26,21 +28,20 @@ type GetMinerResponse struct {
 }
 
 type Tracker struct {
-	miners  map[int]*time.Timer // maps each miner's port to its expiration timer
-	lock    sync.Mutex          // protects miners
-	port    int
-	service *gin.Engine
+	miners map[int]*time.Timer // maps each miner's port to its expiration timer
+	lock   sync.Mutex          // protects miners
+	router *gin.Engine
+	server *http.Server
 }
 
 func NewTracker(port int) *Tracker {
 	tracker := &Tracker{
-		miners:  make(map[int]*time.Timer),
-		port:    port,
-		service: gin.Default(),
+		miners: make(map[int]*time.Timer),
+		router: gin.Default(),
 	}
 
 	// register APIs
-	tracker.service.POST("/register", func(ctx *gin.Context) {
+	tracker.router.POST("/register", func(ctx *gin.Context) {
 		var request RegisterRequest
 		if err := ctx.BindJSON(&request); err != nil {
 			ctx.JSON(http.StatusBadRequest, nil)
@@ -49,21 +50,37 @@ func NewTracker(port int) *Tracker {
 		statusCode, response := tracker.registerHandler(request)
 		ctx.JSON(statusCode, response)
 	})
-	tracker.service.GET("/get_miner", func(ctx *gin.Context) {
+	tracker.router.GET("/get_miner", func(ctx *gin.Context) {
 		statusCode, response := tracker.getMinerHandler()
 		ctx.JSON(statusCode, response)
 	})
+
+	tracker.server = &http.Server{
+		Addr:    fmt.Sprintf("localhost:%d", port),
+		Handler: tracker.router,
+	}
 
 	return tracker
 }
 
 func (t *Tracker) Start() {
 	go func() {
-		err := t.service.Run(fmt.Sprintf("localhost:%d", t.port))
-		if err != nil {
-			log.Print(err)
+		if err := t.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("listen: %s\n", err)
 		}
 	}()
+}
+
+func (t *Tracker) Shutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := t.server.Shutdown(ctx); err != nil {
+		log.Println("error when shutting down server: ", err)
+	}
+	select {
+	case <-ctx.Done():
+		log.Println("shutting down server timeout")
+	}
 }
 
 func (t *Tracker) registerHandler(request RegisterRequest) (int, any) {
