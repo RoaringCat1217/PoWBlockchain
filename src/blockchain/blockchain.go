@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
+	"sort"
 )
 
 // TARGET - A valid block hash has its first TARGET bits be zero.
@@ -65,6 +66,48 @@ func (b *Block) Verify() bool {
 		}
 	}
 	return true
+}
+
+func VerifyBlockChain(blockChain []Block) (bool, []Post) {
+	if len(blockChain) == 0 {
+		return true, nil
+	}
+	// each block must be valid
+	for _, block := range blockChain {
+		if !block.Verify() {
+			return false, nil
+		}
+	}
+	// their hash value must form a chain
+	if !bytes.Equal(blockChain[0].Header.PrevHash, make([]byte, 256)) {
+		return false, nil
+	}
+	for i := 1; i < len(blockChain); i++ {
+		if !bytes.Equal(blockChain[i].Header.PrevHash, Hash(blockChain[i-1].Header)) {
+			return false, nil
+		}
+	}
+	// no duplicated posts
+	posts := make([]Post, 0)
+	for _, block := range blockChain {
+		posts = append(posts, block.Posts...)
+	}
+	sort.Slice(posts, func(i, j int) bool {
+		if posts[i].body.Timestamp != posts[j].body.Timestamp {
+			return posts[i].body.Timestamp < posts[j].body.Timestamp
+		}
+		keyi := PublicKeyToBytes(posts[i].User)
+		keyj := PublicKeyToBytes(posts[j].User)
+		return bytes.Compare(keyi, keyj) < 0
+	})
+	for i := 1; i < len(posts); i++ {
+		if posts[i].body.Timestamp == posts[i-1].body.Timestamp {
+			if bytes.Equal(PublicKeyToBytes(posts[i].User), PublicKeyToBytes(posts[i-1].User)) {
+				return false, nil
+			}
+		}
+	}
+	return true, posts
 }
 
 // PostBase64 base64-encoded Post to support marshalling to json
