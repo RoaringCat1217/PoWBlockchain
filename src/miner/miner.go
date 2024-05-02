@@ -36,9 +36,12 @@ type Miner struct {
 	quit        chan struct{}      // notify the background routine to quit
 }
 
-func NewMiner(port int) *Miner {
+func NewMiner(port int, trackerPort int) *Miner {
 	miner := &Miner{
-		router: gin.Default(),
+		router:      gin.Default(),
+		port:        port,
+		trackerPort: trackerPort,
+		quit:        make(chan struct{}),
 	}
 	miner.cmp = func(a, b any) int {
 		post1 := a.(blockchain.Post)
@@ -54,8 +57,8 @@ func NewMiner(port int) *Miner {
 		key2 := blockchain.PublicKeyToBytes(post2.User)
 		return bytes.Compare(key1, key2)
 	}
-	miner.posts = treeset.NewWith(miner.cmp, nil)
-	miner.pool = treeset.NewWith(miner.cmp, nil)
+	miner.posts = treeset.NewWith(miner.cmp)
+	miner.pool = treeset.NewWith(miner.cmp)
 
 	miner.registerAPIs()
 	miner.server = &http.Server{
@@ -87,6 +90,8 @@ func (m *Miner) Shutdown() {
 	select {
 	case <-ctx.Done():
 		log.Println("shutting down server timeout")
+	default:
+		break
 	}
 }
 

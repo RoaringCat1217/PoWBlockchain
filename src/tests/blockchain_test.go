@@ -1,6 +1,7 @@
-package blockchain
+package tests
 
 import (
+	"blockchain/blockchain"
 	"crypto/rsa"
 	"fmt"
 	"math/rand"
@@ -11,15 +12,15 @@ import (
 
 // TestPostSafety - test whether tampering a Post can be detected by signature
 func TestPostSafety(t *testing.T) {
-	privateKey := GenerateKey()
-	post := Post{
+	privateKey := blockchain.GenerateKey()
+	post := blockchain.Post{
 		User: &privateKey.PublicKey,
-		Body: PostBody{
+		Body: blockchain.PostBody{
 			Content:   "Hello World",
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
-	post.Signature = Sign(privateKey, post.Body)
+	post.Signature = blockchain.Sign(privateKey, post.Body)
 	if !post.Verify() {
 		t.Fatal("Body is not signed correctly")
 	}
@@ -48,24 +49,24 @@ func TestPostSafety(t *testing.T) {
 // TestBlockSafety - test whether tampering a Block can be detected by signature
 func TestBlockSafety(t *testing.T) {
 	users := make([]*rsa.PrivateKey, 0)
-	posts := make([]Post, 0)
+	posts := make([]blockchain.Post, 0)
 	for i := 0; i < 3; i++ {
-		privateKey := GenerateKey()
-		post := Post{
+		privateKey := blockchain.GenerateKey()
+		post := blockchain.Post{
 			User: &privateKey.PublicKey,
-			Body: PostBody{
+			Body: blockchain.PostBody{
 				Content:   fmt.Sprintf("Hello from %d", i),
 				Timestamp: time.Now().UnixNano(),
 			},
 		}
-		post.Signature = Sign(privateKey, post.Body)
+		post.Signature = blockchain.Sign(privateKey, post.Body)
 		users = append(users, privateKey)
 		posts = append(posts, post)
 	}
-	block := Block{
-		Header: BlockHeader{
+	block := blockchain.Block{
+		Header: blockchain.BlockHeader{
 			PrevHash:  make([]byte, 256),
-			Summary:   Hash(posts),
+			Summary:   blockchain.Hash(posts),
 			Timestamp: time.Now().UnixNano(),
 		},
 		Posts: posts,
@@ -76,9 +77,9 @@ mine:
 	for {
 		count++
 		block.Header.Nonce = rand.Uint32()
-		hash := Hash(block.Header)
-		zeroBytes := TARGET / 8
-		zeroBits := TARGET % 8
+		hash := blockchain.Hash(block.Header)
+		zeroBytes := blockchain.TARGET / 8
+		zeroBits := blockchain.TARGET % 8
 		// the first zeroBytes bytes of hash must be zero
 		for i := 0; i < zeroBytes; i++ {
 			if hash[i] != 0 {
