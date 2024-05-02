@@ -180,7 +180,7 @@ VerifyChains:
 	return postsList, nil
 }
 
-// WritePost writes a new post to the specified miners concurrently
+// WritePost writes a new post to the specified miners concurrently and handles errors.
 func (u *User) WritePost(content string) error {
 	// Create a new post with the given content and the user's public key
 	post := blockchain.Post{
@@ -205,6 +205,7 @@ func (u *User) WritePost(content string) error {
 
 	// Create a wait group to wait for concurrent requests to finish
 	var wg sync.WaitGroup
+	errChan := make(chan error, len(miners)) // Channel to collect errors
 
 	// Send POST requests to the selected miners concurrently
 	for _, port := range miners {
@@ -217,12 +218,26 @@ func (u *User) WritePost(content string) error {
 			postJSON, _ := json.Marshal(postBase64)
 			resp, err := http.Post(fmt.Sprintf("http://localhost:%d/write", port), "application/json", bytes.NewReader(postJSON))
 			if err != nil {
+				errChan <- err
 				return
+			}
+			if resp.StatusCode != http.StatusOK {
+				errChan <- fmt.Errorf("miner rejected post: status code %d", resp.StatusCode)
 			}
 			resp.Body.Close()
 		}(port)
 	}
+
 	// Wait for all concurrent requests to finish
 	wg.Wait()
+	close(errChan) // Close channel to finish range iteration
+
+	// Check for errors from the error channel
+	for e := range errChan {
+		if e != nil {
+			return e // Return the first error encountered
+		}
+	}
+
 	return nil
 }
