@@ -35,6 +35,7 @@ func (m *Miner) writeHandler(post blockchain.Post) (int, any) {
 		return http.StatusBadRequest, map[string]string{"error": "duplicated post in the post"}
 	}
 	m.pool.Add(post)
+	log.Printf("%d: Received post \"%s\" from user", m.port, post.Body.Content)
 	return http.StatusOK, nil
 }
 
@@ -56,6 +57,7 @@ func (m *Miner) syncHandler(posts []blockchain.Post) (int, any) {
 		}
 		// accept the post
 		m.pool.Add(post)
+		log.Printf("%d: Synced post \"%s\" to pool", m.port, post.Body.Content)
 	}
 	return http.StatusOK, nil
 }

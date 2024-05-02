@@ -38,7 +38,7 @@ type Miner struct {
 
 func NewMiner(port int, trackerPort int) *Miner {
 	miner := &Miner{
-		router:      gin.Default(),
+		router:      gin.New(),
 		port:        port,
 		trackerPort: trackerPort,
 		quit:        make(chan struct{}),

@@ -15,8 +15,8 @@ import (
 
 const HeartbeatMin = 200
 const HeartbeatMax = 400
-const SyncMin = 200
-const SyncMax = 400
+const SyncMin = 300
+const SyncMax = 600
 const MiningIterations = 10000
 const PostsPerBlock = 2
 
@@ -40,11 +40,11 @@ loop:
 				peers = m.register()
 				heartbeatTimer.Reset(heartbeatInterval)
 			case <-syncTimer.C:
-				// sync with all peers, if I have at least one post
+				// sync my pool with all peers, if I have at least one post
 				request := PostsJson{}
 				// gather all posts to send
 				m.lock.RLock()
-				iter := m.posts.Iterator()
+				iter := m.pool.Iterator()
 				for iter.Next() {
 					post := iter.Value().(blockchain.Post)
 					request.Posts = append(request.Posts, post.EncodeBase64())
@@ -53,12 +53,13 @@ loop:
 				if len(request.Posts) == 0 {
 					// no need to sync empty requests
 					syncTimer.Reset(syncInterval)
-					continue
+					continue timerLoop
 				}
 				reqBytes, err := json.Marshal(request)
 				if err != nil {
 					log.Fatalf("failed to encode sync request")
 				}
+				log.Printf("%d: Syncing posts to all peers...", m.port)
 				wg := sync.WaitGroup{}
 				// sync in parallel
 				for _, peer := range peers {

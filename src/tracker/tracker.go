@@ -32,7 +32,7 @@ type Tracker struct {
 func NewTracker(port int) *Tracker {
 	tracker := &Tracker{
 		miners: make(map[int]*time.Timer),
-		router: gin.Default(),
+		router: gin.New(),
 	}
 
 	// register APIs
