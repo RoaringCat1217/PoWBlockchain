@@ -14,14 +14,14 @@ func TestPostSafety(t *testing.T) {
 	privateKey := GenerateKey()
 	post := Post{
 		User: &privateKey.PublicKey,
-		body: PostBody{
+		Body: PostBody{
 			Content:   "Hello World",
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
-	post.Signature = Sign(privateKey, post.body)
+	post.Signature = Sign(privateKey, post.Body)
 	if !post.Verify() {
-		t.Fatal("body is not signed correctly")
+		t.Fatal("Body is not signed correctly")
 	}
 
 	// encoding and then decoding should return the identical block
@@ -32,14 +32,14 @@ func TestPostSafety(t *testing.T) {
 	}
 
 	// tamper the content of post
-	post.body.Content = "Bye World"
+	post.Body.Content = "Bye World"
 	if post.Verify() {
 		t.Fatal("signature fails to detect a tamper of content")
 	}
 
 	// tamper the timestamp of post
-	post.body.Content = "Hello World"
-	post.body.Timestamp = time.Now().UnixNano()
+	post.Body.Content = "Hello World"
+	post.Body.Timestamp = time.Now().UnixNano()
 	if post.Verify() {
 		t.Fatal("signature fails to detect a tamper of content")
 	}
@@ -53,12 +53,12 @@ func TestBlockSafety(t *testing.T) {
 		privateKey := GenerateKey()
 		post := Post{
 			User: &privateKey.PublicKey,
-			body: PostBody{
+			Body: PostBody{
 				Content:   fmt.Sprintf("Hello from %d", i),
 				Timestamp: time.Now().UnixNano(),
 			},
 		}
-		post.Signature = Sign(privateKey, post.body)
+		post.Signature = Sign(privateKey, post.Body)
 		users = append(users, privateKey)
 		posts = append(posts, post)
 	}

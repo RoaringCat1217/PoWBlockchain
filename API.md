@@ -40,6 +40,13 @@
 **Command**: `/register`
 
 **Method**: `POST`
+```json
+{
+  "port": 8080
+}
+```
+
+**Output**
 
 **Code**: `200 OK`
 ```json
@@ -54,17 +61,56 @@
 
 **Method**: `GET`
 
+**Output**
+
+**Code**: `200 OK`
+```json
+{
+  "blockchain": []
+}
+```
+
 ### A user sends a write request
 **Command**: `/write`
 
 **Method**: `POST`
+```json
+{
+  "user": "xlkdajfi1231n",
+  "content": "Hello World",
+  "timestamp": "0",
+  "signature": "xlkdajfi1231n"
+}
+```
+
+**Output**
+
+**Code**: `200 OK`
 
 ### Another miner syncs with this miner
 **Command**: `/sync`
 
 **Method**: `POST`
+```json
+{
+  "posts": []
+}
+```
+
+**Output**
+
+**Code**: `200 OK`
 
 ### Another miner wants to broadcast its new block
 **Command**: `/broadcast`
 
 **Method**: `POST`
+```json
+{
+  "blockchain": []
+}
+```
+
+**Output**
+
+**Code**: `200 OK`
