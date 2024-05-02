@@ -1,6 +1,7 @@
 package user
 
 import (
+	"blockchain/blockchain"
 	"crypto/rsa"
 	"encoding/json"
 	"net/http"
@@ -103,10 +104,10 @@ func TestReadPosts(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		posts := []Post{
+		posts := []blockchain.Post{
 			{
 				User: &rsa.PublicKey{},
-				body: PostBody{
+				Body: blockchain.PostBody{
 					Content:   "Post 1",
 					Timestamp: time.Now().Unix(),
 				},
@@ -114,7 +115,7 @@ func TestReadPosts(t *testing.T) {
 			},
 			{
 				User: &rsa.PublicKey{},
-				body: PostBody{
+				Body: blockchain.PostBody{
 					Content:   "Post 2",
 					Timestamp: time.Now().Unix(),
 				},
@@ -137,8 +138,8 @@ func TestReadPosts(t *testing.T) {
 
 	expectedContent := []string{"Post 1", "Post 2"}
 	for i, post := range posts {
-		if post.body.Content != expectedContent[i] {
-			t.Errorf("Expected post content to be %s, but got %s", expectedContent[i], post.body.Content)
+		if post.Body.Content != expectedContent[i] {
+			t.Errorf("Expected post content to be %s, but got %s", expectedContent[i], post.Body.Content)
 		}
 	}
 }
@@ -155,7 +156,7 @@ func TestWritePost(t *testing.T) {
 			return
 		}
 
-		var postBase64 PostBase64
+		var postBase64 blockchain.PostBase64
 		err := json.NewDecoder(r.Body).Decode(&postBase64)
 		if err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -168,7 +169,7 @@ func TestWritePost(t *testing.T) {
 			return
 		}
 
-		if post.body.Content != "Test post" {
+		if post.Body.Content != "Test post" {
 			http.Error(w, "Invalid post content", http.StatusBadRequest)
 			return
 		}
@@ -177,7 +178,7 @@ func TestWritePost(t *testing.T) {
 	}))
 	defer minerServer.Close()
 
-	privateKey := GenerateKey()
+	privateKey := blockchain.GenerateKey()
 	user := &User{
 		privateKey: privateKey,
 	}

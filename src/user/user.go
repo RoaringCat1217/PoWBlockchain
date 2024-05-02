@@ -18,7 +18,7 @@ type User struct {
 
 // NewUser creates a new user with the given tracker URL
 func NewUser(trackerURL string) *User {
-	privateKey := GenerateKey()
+	privateKey := blockchain.GenerateKey()
 	return &User{
 		privateKey: privateKey,
 		trackerURL: trackerURL,
@@ -63,7 +63,7 @@ func (u *User) ReadPosts(minerURL string) ([]blockchain.Post, error) {
 	defer resp.Body.Close()
 
 	// Decode the response body to get the list of posts
-	var posts []Post
+	var posts []blockchain.Post
 	err = json.NewDecoder(resp.Body).Decode(&posts)
 	if err != nil {
 		return nil, err
@@ -75,16 +75,16 @@ func (u *User) ReadPosts(minerURL string) ([]blockchain.Post, error) {
 // WritePost writes a new post to the specified miner
 func (u *User) WritePost(minerURL string, content string) error {
 	// Create a new post with the given content and the user's public key
-	post := Post{
+	post := blockchain.Post{
 		User: &u.privateKey.PublicKey,
-		body: PostBody{
+		Body: blockchain.PostBody{
 			Content:   content,
 			Timestamp: time.Now().Unix(),
 		},
 	}
 
 	// Sign the post using the user's private key
-	post.Signature = Sign(u.privateKey, post.body)
+	post.Signature = blockchain.Sign(u.privateKey, post.Body)
 
 	// Encode the post to base64 and marshal it to JSON
 	postBytes, err := json.Marshal(post.EncodeBase64())
