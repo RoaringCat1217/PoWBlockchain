@@ -4,7 +4,9 @@ import (
 	"blockchain/blockchain"
 	"blockchain/tracker"
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/emirpasic/gods/sets/treeset"
 	"github.com/emirpasic/gods/utils"
@@ -74,7 +76,28 @@ func NewMiner(port int) *Miner {
 }
 
 func (m *Miner) Start() {
+	go func() {
+		if err := m.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("listen: %s\n", err)
+		}
+	}()
+	go m.routine()
+}
 
+func (m *Miner) Shutdown() {
+	// first shutdown background routine
+	m.quit <- struct{}{}
+	<-m.quit
+	// then shutdown server
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := m.server.Shutdown(ctx); err != nil {
+		log.Println("error when shutting down server: ", err)
+	}
+	select {
+	case <-ctx.Done():
+		log.Println("shutting down server timeout")
+	}
 }
 
 func (m *Miner) registerAPIs() {
@@ -194,7 +217,7 @@ loop:
 	if !syncTimer.Stop() {
 		<-syncTimer.C
 	}
-	<-m.quit
+	m.quit <- struct{}{}
 }
 
 func (m *Miner) register() []int {
