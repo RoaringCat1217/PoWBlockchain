@@ -2,6 +2,7 @@ package user
 
 import (
 	"blockchain/blockchain"
+	"blockchain/tracker"
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
@@ -26,31 +27,31 @@ func NewUser(trackerURL string) *User {
 }
 
 // GetRandomMiner retrieves a random miner from the tracker
-func (u *User) GetRandomMiner() (string, error) {
+func (u *User) GetRandomMiner() ([]int, error) {
 	// Send a GET request to the tracker's "/miner" endpoint
-	resp, err := http.Get(fmt.Sprintf("%s/miner", u.trackerURL))
+	resp, err := http.Get(fmt.Sprintf("%s/get_miner", u.trackerURL))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Check the response status code
 	if resp.StatusCode == http.StatusNotFound {
-		return "", fmt.Errorf("no miner found")
+		return nil, fmt.Errorf("no miner found")
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get miner: %s", resp.Status)
+		return nil, fmt.Errorf("failed to get miner: %s", resp.Status)
 	}
 
 	// Decode the response body to get the miner's address
-	var miner string
-	err = json.NewDecoder(resp.Body).Decode(&miner)
+	var ports tracker.PortsJson
+	err = json.NewDecoder(resp.Body).Decode(&ports)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return miner, nil
+	return ports.Ports, nil
 }
 
 // ReadPosts retrieves all posts from the specified miner
