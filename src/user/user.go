@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -13,15 +14,15 @@ import (
 	"time"
 )
 
+// N - Number of miners to select for writing posts
 const (
-	N = 5 // Number of miners to select for writing posts
+	N = 5
 )
 
 // User represents a user in the blockchain system
 type User struct {
 	privateKey  *rsa.PrivateKey
 	trackerPort int
-	minerPorts  []int
 }
 
 // NewUser creates a new user with the given tracker port
@@ -30,49 +31,44 @@ func NewUser(trackerPort int) *User {
 	return &User{
 		privateKey:  privateKey,
 		trackerPort: trackerPort,
-		minerPorts:  []int{},
 	}
 }
 
 // GetRandomMiners retrieves all miners from the tracker and selects a random subset
-func (u *User) GetRandomMiners() error {
+func (u *User) GetRandomMiners() ([]int, error) {
 	// Send a GET request to the tracker's "/get_miners" endpoint
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/get_miners", u.trackerPort))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to get miners: %s", resp.Status)
+		return nil, errors.New("failed to retrieve miners from the tracker")
 	}
 
 	// Decode the response body to get the list of miner ports
 	var response tracker.PortsJson
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return err
+		return nil, errors.New("tracker sends invalid response")
 	}
-
-	// Store all the miner ports
-	u.minerPorts = response.Ports
+	ports := response.Ports
 
 	// Select a random subset of miners
-	if len(u.minerPorts) <= N {
+	if len(ports) <= N {
 		// If the number of miners is less than or equal to N, use all miners
-		return nil
+		return ports, nil
 	}
 
 	// Shuffle the miner ports randomly
-	rand.Shuffle(len(u.minerPorts), func(i, j int) {
-		u.minerPorts[i], u.minerPorts[j] = u.minerPorts[j], u.minerPorts[i]
+	rand.Shuffle(len(ports), func(i, j int) {
+		ports[i], ports[j] = ports[j], ports[i]
 	})
 
 	// Select the first N miners from the shuffled list
-	u.minerPorts = u.minerPorts[:N]
-
-	return nil
+	return ports[:N], nil
 }
 
 // ReadPosts retrieves all posts from the specified miner
@@ -101,7 +97,7 @@ func (u *User) WritePost(content string) error {
 		User: &u.privateKey.PublicKey,
 		Body: blockchain.PostBody{
 			Content:   content,
-			Timestamp: time.Now().Unix(),
+			Timestamp: time.Now().UnixNano(),
 		},
 	}
 
@@ -112,20 +108,18 @@ func (u *User) WritePost(content string) error {
 	postBase64 := post.EncodeBase64()
 
 	// Determine the number of miners to use
-	numMiners := len(u.minerPorts)
-	if numMiners > N {
-		numMiners = N
+	miners, err := u.GetRandomMiners()
+	if err != nil {
+		return err
 	}
 
 	// Create a wait group to wait for concurrent requests to finish
 	var wg sync.WaitGroup
-	wg.Add(numMiners)
-
-	// Create a channel to collect errors from concurrent requests
-	errChan := make(chan error, numMiners)
 
 	// Send POST requests to the selected miners concurrently
-	for i := 0; i < numMiners; i++ {
+	for _, port := range miners {
+		port := port
+		wg.Add(1)
 		go func(port int) {
 			defer wg.Done()
 
@@ -133,26 +127,12 @@ func (u *User) WritePost(content string) error {
 			postJSON, _ := json.Marshal(postBase64)
 			resp, err := http.Post(fmt.Sprintf("http://localhost:%d/write", port), "application/json", bytes.NewReader(postJSON))
 			if err != nil {
-				errChan <- err
 				return
 			}
-			defer resp.Body.Close()
-
-			// Check the response status code
-			if resp.StatusCode != http.StatusOK {
-				errChan <- fmt.Errorf("failed to write post to miner %d: %s", port, resp.Status)
-			}
-		}(u.minerPorts[i])
+			resp.Body.Close()
+		}(port)
 	}
-
 	// Wait for all concurrent requests to finish
 	wg.Wait()
-
-	// Check if any errors occurred during concurrent requests
-	select {
-	case err := <-errChan:
-		return err
-	default:
-		return nil
-	}
+	return nil
 }
