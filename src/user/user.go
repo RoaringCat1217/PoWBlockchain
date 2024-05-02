@@ -1,6 +1,7 @@
 package user
 
 import (
+	"blockchain/blockchain"
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
@@ -53,7 +54,7 @@ func (u *User) GetRandomMiner() (string, error) {
 }
 
 // ReadPosts retrieves all posts from the specified miner
-func (u *User) ReadPosts(minerURL string) ([]Post, error) {
+func (u *User) ReadPosts(minerURL string) ([]blockchain.Post, error) {
 	// Send a GET request to the miner's "/posts" endpoint
 	resp, err := http.Get(fmt.Sprintf("%s/posts", minerURL))
 	if err != nil {
