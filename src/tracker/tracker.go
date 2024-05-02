@@ -14,11 +14,11 @@ import (
 // EntryTimeout - A miner entry expires after EntryTimeout, if no heartbeats are received.
 const EntryTimeout = 500 * time.Millisecond
 
-type RegisterRequest struct {
+type PortJson struct {
 	Port int `json:"port"`
 }
 
-type MinersResponse struct {
+type PortsJson struct {
 	Ports []int `json:"ports"`
 }
 
@@ -37,7 +37,7 @@ func NewTracker(port int) *Tracker {
 
 	// register APIs
 	tracker.router.POST("/register", func(ctx *gin.Context) {
-		var request RegisterRequest
+		var request PortJson
 		if err := ctx.BindJSON(&request); err != nil {
 			ctx.JSON(http.StatusBadRequest, nil)
 			return
@@ -78,7 +78,7 @@ func (t *Tracker) Shutdown() {
 	}
 }
 
-func (t *Tracker) registerHandler(request RegisterRequest) (int, any) {
+func (t *Tracker) registerHandler(request PortJson) (int, any) {
 	port := request.Port
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -93,7 +93,7 @@ func (t *Tracker) registerHandler(request RegisterRequest) (int, any) {
 		defer t.lock.Unlock()
 		delete(t.miners, port)
 	})
-	var response MinersResponse
+	var response PortsJson
 	for port := range t.miners {
 		response.Ports = append(response.Ports, port)
 	}
@@ -111,6 +111,6 @@ func (t *Tracker) getMinersHandler() (int, any) {
 	for port := range t.miners {
 		ports = append(ports, port)
 	}
-	response := MinersResponse{Ports: ports}
+	response := PortsJson{Ports: ports}
 	return http.StatusOK, response
 }
