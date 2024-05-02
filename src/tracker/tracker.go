@@ -75,6 +75,8 @@ func (t *Tracker) Shutdown() {
 	select {
 	case <-ctx.Done():
 		log.Println("shutting down server timeout")
+	default:
+		break
 	}
 }
 
