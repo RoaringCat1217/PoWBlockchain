@@ -4,6 +4,7 @@ import (
 	"blockchain/blockchain"
 	"bytes"
 	"github.com/emirpasic/gods/sets/treeset"
+	"log"
 	"net/http"
 )
 
@@ -74,7 +75,7 @@ func (m *Miner) broadcastHandler(newChain []blockchain.Block) (int, any) {
 		}
 	}
 	// their hash value must form a chain
-	if !bytes.Equal(newChain[0].Header.PrevHash, make([]byte, 256)) {
+	if !bytes.Equal(newChain[0].Header.PrevHash, make([]byte, 32)) {
 		return http.StatusOK, nil
 	}
 	for i := 1; i < len(newChain); i++ {
@@ -120,5 +121,6 @@ func (m *Miner) broadcastHandler(newChain []blockchain.Block) (int, any) {
 	m.blockChain = newChain
 	m.posts = posts
 	m.pool = pool
+	log.Printf("%d: Accepted a broadcast, chain length %d\n", m.port, len(m.blockChain))
 	return http.StatusOK, nil
 }

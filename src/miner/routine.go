@@ -15,8 +15,8 @@ import (
 
 const HeartbeatMin = 200
 const HeartbeatMax = 400
-const SyncMin = 500
-const SyncMax = 1000
+const SyncMin = 200
+const SyncMax = 400
 const MiningIterations = 10000
 const PostsPerBlock = 2
 
@@ -40,7 +40,7 @@ loop:
 				peers = m.register()
 				heartbeatTimer.Reset(heartbeatInterval)
 			case <-syncTimer.C:
-				// sync with all peers
+				// sync with all peers, if I have at least one post
 				request := PostsJson{}
 				// gather all posts to send
 				m.lock.RLock()
@@ -50,6 +50,11 @@ loop:
 					request.Posts = append(request.Posts, post.EncodeBase64())
 				}
 				m.lock.RUnlock()
+				if len(request.Posts) == 0 {
+					// no need to sync empty requests
+					syncTimer.Reset(syncInterval)
+					continue
+				}
 				reqBytes, err := json.Marshal(request)
 				if err != nil {
 					log.Fatalf("failed to encode sync request")
@@ -150,17 +155,19 @@ func (m *Miner) mine(peers []int) {
 	}
 	block := blockchain.Block{
 		Header: blockchain.BlockHeader{
-			PrevHash:  make([]byte, 256),
+			PrevHash:  make([]byte, 32),
 			Summary:   blockchain.Hash(posts),
 			Timestamp: time.Now().UnixNano(),
 		},
 		Posts: posts,
 	}
 	if len(m.blockChain) > 0 {
-		copy(block.Header.PrevHash, blockchain.Hash(m.blockChain[len(m.blockChain)-1].Header))
+		hash := blockchain.Hash(m.blockChain[len(m.blockChain)-1].Header)
+		copy(block.Header.PrevHash, hash)
 	}
 
 	success := false
+MineIter:
 	for i := 0; i < MiningIterations; i++ {
 		block.Header.Nonce = rand.Uint32()
 		hash := blockchain.Hash(block.Header)
@@ -169,7 +176,7 @@ func (m *Miner) mine(peers []int) {
 		// the first zeroBytes bytes of hash must be zero
 		for i := 0; i < zeroBytes; i++ {
 			if hash[i] != 0 {
-				continue
+				continue MineIter
 			}
 		}
 		// and then zeroBits bits of hash must be zero
@@ -177,7 +184,7 @@ func (m *Miner) mine(peers []int) {
 			nextByte := hash[zeroBytes]
 			nextByte = nextByte >> (8 - zeroBits)
 			if nextByte != 0 {
-				continue
+				continue MineIter
 			}
 		}
 		success = true
@@ -206,6 +213,7 @@ func (m *Miner) mine(peers []int) {
 		request.Blockchain = append(request.Blockchain, block.EncodeBase64())
 	}
 	m.lock.Unlock()
+	log.Printf("%d: Mined a block, chain length %d\n", m.port, len(m.blockChain))
 	// broadcast the new block in parallel
 	reqBytes, err := json.Marshal(request)
 	if err != nil {

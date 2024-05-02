@@ -18,7 +18,7 @@ import (
 )
 
 // RWCount - Number of miners to select for writing posts
-const RWCount = 5
+const RWCount = 3
 
 // User represents a user in the blockchain system
 type User struct {
@@ -147,7 +147,7 @@ VerifyChains:
 			}
 		}
 		// their hash value must form a chain
-		if !bytes.Equal(chain[0].Header.PrevHash, make([]byte, 256)) {
+		if !bytes.Equal(chain[0].Header.PrevHash, make([]byte, 32)) {
 			continue VerifyChains
 		}
 		for i := 1; i < len(chain); i++ {

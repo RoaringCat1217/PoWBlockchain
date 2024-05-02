@@ -2,6 +2,9 @@ package tests
 
 import (
 	"blockchain/blockchain"
+	Miner "blockchain/miner"
+	Tracker "blockchain/tracker"
+	User "blockchain/user"
 	"crypto/rsa"
 	"fmt"
 	"math/rand"
@@ -65,7 +68,7 @@ func TestBlockSafety(t *testing.T) {
 	}
 	block := blockchain.Block{
 		Header: blockchain.BlockHeader{
-			PrevHash:  make([]byte, 256),
+			PrevHash:  make([]byte, 32),
 			Summary:   blockchain.Hash(posts),
 			Timestamp: time.Now().UnixNano(),
 		},
@@ -121,4 +124,39 @@ mine:
 	if block.Verify() {
 		t.Fatalf("fails to detect a tamper of previous block's hash")
 	}
+}
+
+func TestCompleteInteractions(t *testing.T) {
+	tracker := Tracker.NewTracker(8080)
+	tracker.Start()
+	// register 6 miners
+	miners := make([]*Miner.Miner, 0)
+	for i := 0; i < 6; i++ {
+		miner := Miner.NewMiner(3000+i, 8080)
+		miner.Start()
+		miners = append(miners, miner)
+	}
+	// register 6 users
+	users := make([]*User.User, 0)
+	for i := 0; i < 6; i++ {
+		users = append(users, User.NewUser(8080))
+	}
+	// wait for everything to be ready
+	time.Sleep(500 * time.Millisecond)
+
+	// each user posts something
+	for i := 0; i < 6; i++ {
+		err := users[i].WritePost(fmt.Sprintf("Hello world from %d", i))
+		if err != nil {
+			t.Fatalf("error when posting: %v", err)
+		}
+	}
+
+	// wait for the blockchain to reach consensus
+	time.Sleep(200000 * time.Millisecond)
+	posts, err := users[0].ReadPosts()
+	if err != nil {
+		t.Fatalf("error when reading: %v", err)
+	}
+	fmt.Print(posts)
 }
