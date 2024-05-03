@@ -59,7 +59,6 @@ loop:
 				if err != nil {
 					log.Fatalf("failed to encode sync request")
 				}
-				log.Printf("%d: Syncing posts to all peers...", m.port)
 				wg := sync.WaitGroup{}
 				// sync in parallel
 				for _, peer := range peers {
@@ -214,7 +213,12 @@ MineIter:
 		request.Blockchain = append(request.Blockchain, block.EncodeBase64())
 	}
 	m.lock.Unlock()
-	log.Printf("%d: Mined a block, chain length %d\n", m.port, len(m.blockChain))
+
+	contents := make([]string, 0)
+	for _, post := range block.Posts {
+		contents = append(contents, post.Body.Content)
+	}
+	log.Printf("%d: Mined a block with contents (%v), chain length %d\n", m.port, contents, len(request.Blockchain))
 	// broadcast the new block in parallel
 	reqBytes, err := json.Marshal(request)
 	if err != nil {
