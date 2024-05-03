@@ -172,6 +172,12 @@ func TestMergeBlockChainHeads(t *testing.T) {
 	tracker.Shutdown()
 }
 
+// TestComputingPowerAttack - Simulate a successful computing power attack to a blockchain.
+// First 6 miners are in the system.
+// After 5 seconds, a malicious miner with 4 goroutines start attacking. This should not be successful.
+// After 10 seconds, all but 2 miners are shut down. Now the malicious miner should be able to out-compute well-behaved
+// miners.
+// After 50 seconds, the blockchain should have been attacked successfully.
 func TestComputingPowerAttack(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
