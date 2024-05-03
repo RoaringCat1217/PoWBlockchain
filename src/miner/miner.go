@@ -23,6 +23,7 @@ type BlockChainJson struct {
 	Blockchain []blockchain.BlockBase64 `json:"blockchain"`
 }
 
+// Miner - a Miner in the blockchain system.
 type Miner struct {
 	blockChain  []blockchain.Block // current blockchain
 	cmp         utils.Comparator   // comparator for posts and pool
@@ -36,6 +37,7 @@ type Miner struct {
 	quit        chan struct{}      // notify the background routine to quit
 }
 
+// NewMiner - creates a new Miner, but does not start its http server and background routine yet.
 func NewMiner(port int, trackerPort int) *Miner {
 	miner := &Miner{
 		router:      gin.New(),
@@ -68,6 +70,7 @@ func NewMiner(port int, trackerPort int) *Miner {
 	return miner
 }
 
+// Start - starts the Miner's background routine and http server.
 func (m *Miner) Start() {
 	go func() {
 		if err := m.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -77,6 +80,7 @@ func (m *Miner) Start() {
 	go m.routine()
 }
 
+// Shutdown - stops the Miner's background routine and http server.
 func (m *Miner) Shutdown() {
 	// first shutdown background routine
 	m.quit <- struct{}{}
@@ -95,6 +99,7 @@ func (m *Miner) Shutdown() {
 	}
 }
 
+// registerAPIs - register APIs to the Miner's http router.
 func (m *Miner) registerAPIs() {
 	// register APIs
 	m.router.GET("/read", func(ctx *gin.Context) {

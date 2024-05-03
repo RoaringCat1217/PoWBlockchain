@@ -55,7 +55,7 @@ func PublicKeyFromBytes(buffer []byte) (*rsa.PublicKey, error) {
 	return &rsa.PublicKey{N: N, E: E}, nil
 }
 
-// Sign - Sign an object with a private key.
+// Sign - Sign an arbitrary object with a private key.
 func Sign(privateKey *rsa.PrivateKey, object any) []byte {
 	hash := Hash(object)
 	signature, err := rsa.SignPKCS1v15(nil, privateKey, crypto.SHA256, hash)

@@ -22,13 +22,15 @@ type PortsJson struct {
 	Ports []int `json:"ports"`
 }
 
+// Tracker - A Tracker in the blockchain system.
 type Tracker struct {
 	miners map[int]*time.Timer // maps each miner's port to its expiration timer
-	lock   sync.Mutex          // protects miners
-	router *gin.Engine
-	server *http.Server
+	lock   sync.Mutex          // protects miners for concurrent access
+	router *gin.Engine         // http router
+	server *http.Server        // http server
 }
 
+// NewTracker - creates a new Tracker, but does not start its http server yet.
 func NewTracker(port int) *Tracker {
 	tracker := &Tracker{
 		miners: make(map[int]*time.Timer),
@@ -58,6 +60,7 @@ func NewTracker(port int) *Tracker {
 	return tracker
 }
 
+// Start - starts the Tracker's http server.
 func (t *Tracker) Start() {
 	go func() {
 		if err := t.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -66,6 +69,7 @@ func (t *Tracker) Start() {
 	}()
 }
 
+// Shutdown - shuts down the Tracker's http server.
 func (t *Tracker) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -80,6 +84,7 @@ func (t *Tracker) Shutdown() {
 	}
 }
 
+// registerHandler - handles request to /register API.
 func (t *Tracker) registerHandler(request PortJson) (int, any) {
 	port := request.Port
 	t.lock.Lock()
@@ -102,6 +107,7 @@ func (t *Tracker) registerHandler(request PortJson) (int, any) {
 	return http.StatusOK, response
 }
 
+// getMinersHandler - handles request to /get_miners API.
 func (t *Tracker) getMinersHandler() (int, any) {
 	t.lock.Lock()
 	defer t.lock.Unlock()

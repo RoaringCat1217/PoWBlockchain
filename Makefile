@@ -1,37 +1,10 @@
-# Set the Go compiler
-GO := go
-
-# Set the package name
-PKGNAME := src
-
-# Set the package directories
-PKG_DIRS := $(PKGNAME)/blockchain $(PKGNAME)/miner $(PKGNAME)/tracker $(PKGNAME)/user $(PKGNAME)/tests
-
-# Set the build flags
-BUILD_FLAGS := -v
-
-# Set the test flags
-TEST_FLAGS := -v
-
-# Set the test timeout
-TEST_TIMEOUT := 600s
-
-.PHONY: build test test-files test-packages clean docs
-
-.SILENT: build test test-files test-packages clean docs
-
-# Build the package
-build:
-	cd $(PKGNAME) $(GO) build
-
 # Run all tests
-test: test-files test-packages
+test:
+	cd src && go clean -testcache && go test -v blockchain/tests
 
-# Run tests for individual files
-test-files:
-	@for pkg in $(PKG_DIRS); do \
-		for file in $$(find $$pkg -name '*_test.go'); do \
-			echo "Testing $$file"; \
-			cd $$(dirname $$file); $(GO) test $(BUILD_FLAGS) -timeout $(TEST_TIMEOUT) ./; \
-		done; \
-	done
+doc:
+	cd src/blockchain && go doc -u -all > blockchain-doc.txt
+	cd src/miner && go doc -u -all > miner-doc.txt
+	cd src/tracker && go doc -u -all > tracker-doc.txt
+	cd src/user && go doc -u -all > user-doc.txt
+	cd src/tests && go doc -u -all > tests-doc.txt
