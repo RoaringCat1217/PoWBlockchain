@@ -1,10 +1,16 @@
 package tests
 
 import (
+	"blockchain/blockchain"
 	Miner "blockchain/miner"
 	Tracker "blockchain/tracker"
 	User "blockchain/user"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -163,5 +169,158 @@ func TestMergeBlockChainHeads(t *testing.T) {
 	for _, miner := range miners {
 		miner.Shutdown()
 	}
+	tracker.Shutdown()
+}
+
+func TestComputingPowerAttack(t *testing.T) {
+	tracker := Tracker.NewTracker(8080)
+	tracker.Start()
+	user := User.NewUser(8080)
+	// set up 6 well-behaved miners
+	miners := make([]*Miner.Miner, 0)
+	for i := 0; i < 6; i++ {
+		miner := Miner.NewMiner(3000+i, 8080)
+		miner.Start()
+		miners = append(miners, miner)
+	}
+	// let them mine for 5 seconds
+	time.Sleep(5000 * time.Millisecond)
+
+	// malicious miner tries to create a branch on top of this blockchain
+	quit := make(chan bool)
+	go func() {
+		attackChain := make([]blockchain.Block, 0)
+		for {
+			// set up an attack block
+			privateKey := blockchain.GenerateKey()
+			attackPost := blockchain.Post{
+				User:      &privateKey.PublicKey,
+				Signature: nil,
+				Body: blockchain.PostBody{
+					Content:   "Spam",
+					Timestamp: time.Now().UnixNano(),
+				},
+			}
+			attackPost.Signature = blockchain.Sign(privateKey, attackPost.Body)
+			posts := make([]blockchain.Post, 0)
+			posts = append(posts, attackPost)
+			block := blockchain.Block{
+				Header: blockchain.BlockHeader{
+					PrevHash:  make([]byte, 32),
+					Summary:   blockchain.Hash(posts),
+					Timestamp: time.Now().UnixNano(),
+				},
+				Posts: posts,
+			}
+			if len(attackChain) > 0 {
+				hash := blockchain.Hash(attackChain[len(attackChain)-1].Header)
+				copy(block.Header.PrevHash, hash)
+			}
+			success := false
+			// mine this attack block
+			for !success {
+				select {
+				case <-quit:
+					quit <- true
+					return
+				default:
+					break
+				}
+				// use 4 goroutines for computing
+				chanNonce := make(chan uint32)
+				nonces := make([]uint32, 0)
+				for i := 0; i < 4; i++ {
+					go func() {
+						// create a local copy
+						encoded := block.EncodeBase64()
+						block, _ := encoded.DecodeBase64()
+					MineIter:
+						for i := 0; i < 10000; i++ {
+							block.Header.Nonce = rand.Uint32()
+							hash := blockchain.Hash(block.Header)
+							zeroBytes := blockchain.TARGET / 8
+							zeroBits := blockchain.TARGET % 8
+							// the first zeroBytes bytes of hash must be zero
+							for i := 0; i < zeroBytes; i++ {
+								if hash[i] != 0 {
+									continue MineIter
+								}
+							}
+							// and then zeroBits bits of hash must be zero
+							if zeroBits > 0 {
+								nextByte := hash[zeroBytes]
+								nextByte = nextByte >> (8 - zeroBits)
+								if nextByte != 0 {
+									continue MineIter
+								}
+							}
+							chanNonce <- block.Header.Nonce
+							return
+						}
+						chanNonce <- 0
+					}()
+				}
+				for i := 0; i < 4; i++ {
+					result := <-chanNonce
+					nonces = append(nonces, result)
+					if result != 0 {
+						block.Header.Nonce = result
+						success = true
+					}
+				}
+			}
+			// success
+			attackChain = append(attackChain, block)
+			encodedChain := make([]blockchain.BlockBase64, 0)
+			for _, b := range attackChain {
+				encodedChain = append(encodedChain, b.EncodeBase64())
+			}
+			log.Printf("Attack chain has length of %d\n", len(attackChain))
+			// broadcast
+			for i := 0; i < 6; i++ {
+				request := Miner.BlockChainJson{Blockchain: encodedChain}
+				reqJson, _ := json.Marshal(request)
+				resp, _ := http.Post(
+					fmt.Sprintf("http://localhost:%d/broadcast", 3000+i),
+					"application/json", bytes.NewReader(reqJson))
+				if resp != nil && resp.Body != nil {
+					resp.Body.Close()
+				}
+			}
+		}
+	}()
+	t.Log("Started malicious miners")
+
+	// well-behaved miners should be able to out-compute malicious miners
+	time.Sleep(10000 * time.Millisecond)
+	posts, err := user.ReadPosts()
+	if err != nil {
+		t.Fatalf("error when reading posts: %v\n", err)
+	}
+	if len(posts) != 0 {
+		t.Fatalf("blockchain is attacked by malicious miners\n")
+	}
+
+	// now all but two miners are shut down
+	for i := 2; i < 6; i++ {
+		miners[i].Shutdown()
+	}
+	t.Log("Shut down 4 miners")
+	// now the malicious miner should out-compute well-behaved miners
+	time.Sleep(50000 * time.Millisecond)
+	posts, err = user.ReadPosts()
+	if err != nil {
+		t.Fatalf("error when reading posts: %v\n", err)
+	}
+	if len(posts) == 0 {
+		t.Fatalf("malicious miners did not out-compute well-behaved miners\n")
+	}
+
+	// clean up
+	for i := 0; i < 2; i++ {
+		miners[i].Shutdown()
+	}
+	quit <- true
+	<-quit
 	tracker.Shutdown()
 }
