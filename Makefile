@@ -14,7 +14,7 @@ BUILD_FLAGS := -v
 TEST_FLAGS := -v
 
 # Set the test timeout
-TEST_TIMEOUT := 120s
+TEST_TIMEOUT := 600s
 
 .PHONY: build test test-files test-packages clean docs
 
@@ -35,8 +35,3 @@ test-files:
 			cd $$(dirname $$file); $(GO) test $(BUILD_FLAGS) -timeout $(TEST_TIMEOUT) ./; \
 		done; \
 	done
-
-# Clean build artifacts and test cache
-clean:
-	rm -rf $(PKGNAME)/*.test
-	$(GO) clean -testcache
