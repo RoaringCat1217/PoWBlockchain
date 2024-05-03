@@ -12,9 +12,9 @@ As indicated in the lab writeup, you have an opportunity to design and implement
 ...
 
 ## Description of tests and how to run them
-
-1. Test for...
-
+To start the tests, use the following command:
 ```
 make test
 ```
+This command will run all the tests defined in the Makefile.
+Please note that the success of the tests is closely related to the computing power of your CPU. The tests involve mining blocks, which require significant computational resources. If you encounter test failures, it may be due to the target difficulty being too high for your system to complete the mining process within the specified timeout.
