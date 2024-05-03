@@ -126,6 +126,7 @@ mine:
 	}
 }
 
+// TestCompleteInteractions - orchestrate complete interactions between a tracker, users and miners
 func TestCompleteInteractions(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
@@ -153,10 +154,22 @@ func TestCompleteInteractions(t *testing.T) {
 	}
 
 	// wait for the blockchain to reach consensus
-	time.Sleep(200000 * time.Millisecond)
+	time.Sleep(20000 * time.Millisecond)
 	posts, err := users[0].ReadPosts()
 	if err != nil {
 		t.Fatalf("error when reading: %v", err)
 	}
-	fmt.Print(posts)
+	if len(posts) != 6 {
+		t.Fatalf("not enough posts on the blockchain")
+	}
+	for i := 0; i < 6; i++ {
+		if posts[i].Body.Content != fmt.Sprintf("Hello world from %d", i) {
+			t.Fatalf("wrong body for post %d: %s", i, posts[i].Body.Content)
+		}
+	}
+	// gracefully shutdown everything
+	for _, miner := range miners {
+		miner.Shutdown()
+	}
+	tracker.Shutdown()
 }
