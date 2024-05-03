@@ -10,7 +10,13 @@ import (
 	"time"
 )
 
-// TestMinerDiscovery - test whether miners can register to the tracker and discover each other correctly
+// TestMinerDiscovery checks the functionality of the tracker's miner registration and discovery mechanisms.
+// The test ensures that:
+// 1. Miners can successfully register with the tracker and appear in the discovery list.
+// 2. The tracker correctly handles miner timeouts and removes miners that do not renew their registration.
+// 3. The tracker correctly updates the list of active miners when new miners register and old ones time out.
+// This function simulates the registration of multiple miners, checks the list of registered miners,
+// waits for a timeout, adds another miner, and verifies the updated list to ensure it reflects the expected state.
 func TestMinerDiscovery(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()

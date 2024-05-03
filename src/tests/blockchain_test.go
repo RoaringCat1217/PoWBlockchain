@@ -10,7 +10,12 @@ import (
 	"time"
 )
 
-// TestPostSafety - test whether tampering a Post can be detected by signature
+// TestPostSafety verifies the integrity and security mechanisms of blockchain posts.
+// The test checks three key aspects:
+// 1. Signature Validation: Ensures that a post with a valid signature verifies correctly.
+// 2. Encoding and Decoding: Confirms that a post remains unchanged through encode/decode cycles.
+// 3. Tamper Detection: Tests the system's ability to detect and reject tampered posts after signing.
+// It performs tampering on both content and timestamp to check the robustness of the signature system.
 func TestPostSafety(t *testing.T) {
 	privateKey := blockchain.GenerateKey()
 	post := blockchain.Post{
@@ -46,7 +51,12 @@ func TestPostSafety(t *testing.T) {
 	}
 }
 
-// TestBlockSafety - test whether tampering a Block can be detected by signature
+// TestBlockSafety evaluates the blockchain's ability to detect tampering within its blocks.
+// The test examines:
+// 1. Block Validation: Ensures that a freshly mined block with correct signatures and hashes is valid.
+// 2. Encode and Decode Integrity: Confirms that a block's structure is maintained correctly through encoding and decoding cycles.
+// 3. Tamper Detection: Tests detection of tampering in block contents, including post deletions and modifications to the 'PrevHash'.
+// This function performs detailed checks by modifying block components and verifying that these changes invalidate the block.
 func TestBlockSafety(t *testing.T) {
 	users := make([]*rsa.PrivateKey, 0)
 	posts := make([]blockchain.Post, 0)

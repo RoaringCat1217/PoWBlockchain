@@ -18,14 +18,17 @@ import (
 	"time"
 )
 
+// PartitionTracker manages a list of blockchain miners and supports network partitioning for testing.
 type PartitionTracker struct {
 	miners      map[int]*time.Timer // maps each miner's port to its expiration timer
-	lock        sync.Mutex          // protects miners
-	router      *gin.Engine
-	server      *http.Server
-	partitioned atomic.Bool
+	lock        sync.Mutex          // protects access to the miners map
+	router      *gin.Engine         // HTTP router for handling API requests
+	server      *http.Server        // HTTP server to serve API requests
+	partitioned atomic.Bool         // flag to control network partitioning behavior
 }
 
+// NewPartitionTracker creates and initializes a new PartitionTracker instance.
+// It sets up HTTP routes and prepares the server to listen on the specified port.
 func NewPartitionTracker(port int) *PartitionTracker {
 	tracker := &PartitionTracker{
 		miners: make(map[int]*time.Timer),
@@ -55,6 +58,7 @@ func NewPartitionTracker(port int) *PartitionTracker {
 	return tracker
 }
 
+// Start initiates the HTTP server to handle incoming requests.
 func (t *PartitionTracker) Start() {
 	go func() {
 		if err := t.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -63,6 +67,7 @@ func (t *PartitionTracker) Start() {
 	}()
 }
 
+// Shutdown gracefully stops the HTTP server with a timeout.
 func (t *PartitionTracker) Shutdown() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -77,10 +82,12 @@ func (t *PartitionTracker) Shutdown() {
 	}
 }
 
+// Partition toggles the network partition status.
 func (t *PartitionTracker) Partition(partition bool) {
 	t.partitioned.Store(partition)
 }
 
+// registerHandler processes the /register API requests to manage miner registrations.
 func (t *PartitionTracker) registerHandler(request Tracker.PortJson) (int, any) {
 	port := request.Port
 	r := port % 2
@@ -115,6 +122,7 @@ func (t *PartitionTracker) registerHandler(request Tracker.PortJson) (int, any) 
 	return http.StatusOK, response
 }
 
+// getMinersHandler provides a list of registered miners.
 func (t *PartitionTracker) getMinersHandler() (int, any) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -130,6 +138,7 @@ func (t *PartitionTracker) getMinersHandler() (int, any) {
 	return http.StatusOK, response
 }
 
+// ReadBlockchain queries a miner and retrieves the blockchain content.
 func ReadBlockchain(port int) []blockchain.Block {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/read", port))
 	if err != nil {
@@ -154,6 +163,7 @@ func ReadBlockchain(port int) []blockchain.Block {
 	return chain
 }
 
+// WriteBlockchain submits a post to a miner for inclusion in the blockchain.
 func WriteBlockchain(port int, content string) error {
 	privateKey := blockchain.GenerateKey()
 	post := blockchain.Post{
@@ -183,26 +193,30 @@ func WriteBlockchain(port int, content string) error {
 	return nil
 }
 
-// N - Number of miners to select for writing posts
+// N defines the number of miners to select for writing posts.
 const (
 	N = 3
 )
 
-// mockTracker is a mock implementation of the tracker server
+// mockTracker is a mock implementation of the tracker server used in tests.
+// It simulates the behavior of a real tracker by providing a predefined list of miners.
 type mockTracker struct {
-	miners []int
+	miners []int // List of miner port numbers.
 }
 
-// newMockTracker creates a new instance of the mock tracker server
+// newMockTracker creates a new instance of the mock tracker with a specified list of miners.
+// This function is used in tests to set up a tracker with controlled behavior and predictable output.
 func newMockTracker(miners []int) *mockTracker {
 	return &mockTracker{miners: miners}
 }
 
-// handleGetMiners handles the GET request to retrieve the list of miners
+// handleGetMiners handles the HTTP GET request to retrieve the list of miners from the mock tracker.
+// It encodes and returns the list of miner ports in a JSON format, simulating the response of a real tracker server.
 func (t *mockTracker) handleGetMiners(w http.ResponseWriter, r *http.Request) {
-	response := tracker.PortsJson{Ports: t.miners}
-	err := json.NewEncoder(w).Encode(response)
+	response := tracker.PortsJson{Ports: t.miners} // Create response payload with the list of miners.
+	err := json.NewEncoder(w).Encode(response)     // Encode the list of miners into JSON and write to the response.
 	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
 }

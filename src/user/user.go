@@ -26,7 +26,15 @@ type User struct {
 	trackerPort int
 }
 
-// NewUser creates a new user with the given tracker port
+// NewUser initializes a new instance of a User with a specific tracker port.
+// The function generates a new RSA private key for the user and returns a User struct with the initialized values.
+// Parameters:
+//
+//	trackerPort (int): The port number on which the tracker service is running.
+//
+// Returns:
+//
+//	*User: Pointer to the newly created User struct.
 func NewUser(trackerPort int) *User {
 	privateKey := blockchain.GenerateKey()
 	return &User{
@@ -35,7 +43,13 @@ func NewUser(trackerPort int) *User {
 	}
 }
 
-// GetRandomMiners retrieves all miners from the tracker and selects a random subset
+// GetRandomMiners retrieves a random subset of miners from the tracker service.
+// It sends a GET request to the tracker's "/get_miners" endpoint and decodes the list of active miners.
+// If the number of available miners is less than or equal to RWCount, it returns all miners. Otherwise, it shuffles
+// the list and selects a random subset of RWCount miners.
+// Returns:
+//
+//	([]int, error): A slice of selected miner ports and an error, if any occurred during the process.
 func (u *User) GetRandomMiners() ([]int, error) {
 	// Send a GET request to the tracker's "/get_miners" endpoint
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/get_miners", u.trackerPort))
@@ -72,7 +86,13 @@ func (u *User) GetRandomMiners() ([]int, error) {
 	return ports[:RWCount], nil
 }
 
-// ReadPosts retrieves all posts from the specified miner
+// ReadPosts retrieves posts from a random subset of miners and consolidates them into a single, validated list.
+// The function first retrieves a list of active miners and then concurrently fetches and decodes their stored blockchains.
+// It verifies each blockchain's integrity and consistency, ensuring each block is valid and properly linked.
+// Finally, it extracts and returns a de-duplicated list of posts sorted by their timestamp and user public key.
+// Returns:
+//
+//	([]blockchain.Post, error): A slice of blockchain posts that have been validated and sorted, and an error, if any occurred.
 func (u *User) ReadPosts() ([]blockchain.Post, error) {
 	miners, err := u.GetRandomMiners()
 	if err != nil {
@@ -180,7 +200,17 @@ VerifyChains:
 	return postsList, nil
 }
 
-// WritePost writes a new post to the specified miners concurrently and handles errors.
+// WritePost creates and signs a new post with the user's private key, then concurrently sends it to a subset of miners.
+// It generates a new post using the provided content and current timestamp, signs it, and encodes it in base64 format.
+// The function then retrieves a list of active miners and sends the post to each via a POST request.
+// It waits for all requests to complete and checks for errors, returning the first encountered error.
+// Parameters:
+//
+//	content (string): The content of the post to be created.
+//
+// Returns:
+//
+//	error: An error if any occurred during the process of writing the post.
 func (u *User) WritePost(content string) error {
 	// Create a new post with the given content and the user's public key
 	post := blockchain.Post{
