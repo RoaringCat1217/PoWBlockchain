@@ -20,6 +20,8 @@ const SyncMax = 600
 const MiningIterations = 10000
 const PostsPerBlock = 2
 
+// routine - A miner's background routine.
+// Responsible for sending heartbeats to the tracker, syncing with peers and mining
 func (m *Miner) routine() {
 	heartbeatInterval := time.Duration(HeartbeatMin+rand.Intn(HeartbeatMax-HeartbeatMin)) * time.Millisecond
 	syncInterval := time.Duration(SyncMin+rand.Intn(SyncMax-SyncMin)) * time.Millisecond
@@ -87,6 +89,7 @@ loop:
 	m.quit <- struct{}{}
 }
 
+// register - register this miner to the tracker, also responsible for sending heartbeats to the tracker.
 func (m *Miner) register() []int {
 	request := tracker.PortJson{Port: m.port}
 	reqBytes, err := json.Marshal(request)
@@ -124,6 +127,7 @@ func (m *Miner) register() []int {
 	return peers
 }
 
+// syncWith - sync with one peer
 func (m *Miner) syncWith(peer int, data []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	url := fmt.Sprintf("http://localhost:%d/sync", peer)
@@ -138,6 +142,7 @@ func (m *Miner) syncWith(peer int, data []byte, wg *sync.WaitGroup) {
 	}
 }
 
+// mine - try to mine one block. It will try at most MiningIterations iterations before it returns.
 func (m *Miner) mine(peers []int) {
 	m.lock.RLock()
 	length := len(m.blockChain)
@@ -233,6 +238,7 @@ MineIter:
 	wg.Wait()
 }
 
+// broadcastTo - broadcast a newly mined block to all peers
 func (m *Miner) broadcastTo(peer int, data []byte, wg *sync.WaitGroup) {
 	defer wg.Done()
 	url := fmt.Sprintf("http://localhost:%d/broadcast", peer)

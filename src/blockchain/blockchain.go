@@ -14,12 +14,14 @@ type PostBody struct {
 	Timestamp int64
 }
 
+// Post - A user's post to be sent to the blockchain
 type Post struct {
 	User      *rsa.PublicKey
 	Signature []byte
 	Body      PostBody
 }
 
+// Verify - verifies the post's signature matches its public key and body.
 func (p *Post) Verify() bool {
 	return Verify(p.User, p.Body, p.Signature)
 }
@@ -31,11 +33,13 @@ type BlockHeader struct {
 	Nonce     uint32
 }
 
+// Block - A block in the blockchain.
 type Block struct {
 	Header BlockHeader
 	Posts  []Post
 }
 
+// Verify - verifies if this block is valid.
 func (b *Block) Verify() bool {
 	hash := Hash(b.Header)
 	zeroBytes := TARGET / 8
