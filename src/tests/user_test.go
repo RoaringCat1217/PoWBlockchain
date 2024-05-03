@@ -2,7 +2,7 @@ package tests
 
 import (
 	"blockchain/blockchain"
-	"blockchain/miner"
+	Miner "blockchain/miner"
 	"blockchain/tracker"
 	"blockchain/user"
 	"encoding/json"
@@ -73,98 +73,51 @@ func TestGetRandomMiners(t *testing.T) {
 	}
 }
 
-// TestReadPosts tests the retrieval of posts from miners
 func TestReadPosts(t *testing.T) {
-	miners := []int{8001, 8002, 8003}
-	mockTracker := newMockTracker(miners)
+	newTracker := tracker.NewTracker(8080)
+	newTracker.Start()
 
-	trackerServer := httptest.NewServer(http.HandlerFunc(mockTracker.handleGetMiners))
-	defer trackerServer.Close()
-
-	newUser := user.NewUser(extractPort(trackerServer.URL))
-
-	var blockchains [][]blockchain.Block
-	for i := 0; i < len(miners); i++ {
-		posts := []blockchain.Post{
-			{
-				User: &blockchain.GenerateKey().PublicKey,
-				Body: blockchain.PostBody{
-					Content:   fmt.Sprintf("Post %d-1", i),
-					Timestamp: time.Now().UnixNano(),
-				},
-				Signature: []byte{},
-			},
-			{
-				User: &blockchain.GenerateKey().PublicKey,
-				Body: blockchain.PostBody{
-					Content:   fmt.Sprintf("Post %d-2", i),
-					Timestamp: time.Now().UnixNano(),
-				},
-				Signature: []byte{},
-			},
-		}
-		// Sign the posts
-		for j := range posts {
-			posts[j].Signature = blockchain.Sign(blockchain.GenerateKey(), posts[j].Body)
-		}
-
-		blocks := []blockchain.Block{
-			{
-				Header: blockchain.BlockHeader{
-					PrevHash:  []byte{},
-					Summary:   blockchain.Hash(posts),
-					Timestamp: time.Now().UnixNano(),
-					Nonce:     0,
-				},
-				Posts: posts,
-			},
-		}
-		blockchains = append(blockchains, blocks)
+	// Register 3 miners
+	miners := make([]*Miner.Miner, 0)
+	for i := 0; i < 3; i++ {
+		miner := Miner.NewMiner(3000+i, 8080)
+		miner.Start()
+		miners = append(miners, miner)
 	}
 
-	minerServers := make([]*httptest.Server, len(miners))
-	for i := range miners {
-		blocks := blockchains[i]
-		minerServers[i] = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			var encoded []blockchain.BlockBase64
-			for _, block := range blocks {
-				encoded = append(encoded, block.EncodeBase64())
-			}
-			err := json.NewEncoder(w).Encode(miner.BlockChainJson{Blockchain: encoded})
-			if err != nil {
-				return
-			}
-		}))
-		miners[i] = extractPort(minerServers[i].URL)
-	}
-	defer func() {
-		for _, server := range minerServers {
-			server.Close()
-		}
-	}()
+	// Create a user
+	user := user.NewUser(8080)
 
-	posts, err := newUser.ReadPosts()
+	// Wait for everything to be ready
+	time.Sleep(500 * time.Millisecond)
+
+	// User posts something
+	err := user.WritePost("Hello World")
 	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+		t.Fatalf("error when posting: %v", err)
 	}
 
-	// Check if the retrieved posts match the expected posts
-	var expectedPosts []blockchain.Post
-	for _, blocks := range blockchains {
-		for _, block := range blocks {
-			expectedPosts = append(expectedPosts, block.Posts...)
-		}
+	// Wait for the blockchain to reach consensus
+	time.Sleep(2000 * time.Millisecond)
+
+	posts, err := user.ReadPosts()
+	if err != nil {
+		t.Fatalf("error when reading: %v", err)
 	}
 
-	if len(posts) != len(expectedPosts) {
-		t.Errorf("Expected %d posts, but got %d", len(expectedPosts), len(posts))
+	if len(posts) != 1 {
+		t.Fatalf("expected 1 post, but got %d", len(posts))
 	}
 
-	for i := range posts {
-		if posts[i].Body != expectedPosts[i].Body {
-			t.Errorf("Expected post body %v, but got %v", expectedPosts[i].Body, posts[i].Body)
-		}
+	if posts[0].Body.Content != "Hello World" {
+		t.Fatalf("wrong body for post: %s", posts[0].Body.Content)
 	}
+
+	// Gracefully shutdown everything
+	for _, miner := range miners {
+		miner.Shutdown()
+	}
+	newTracker.Shutdown()
 }
 
 // TestWritePost tests the writing of a post to miners
