@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// TestMaliciousUser tests the behavior of the system when a malicious user tries to submit a tampered post
+// TestMaliciousUser - Tests the behavior of miners when a malicious user tries to submit a tampered or duplicated post.
 func TestMaliciousUser(t *testing.T) {
 	tracker := Tracker.NewTracker(8082)
 	tracker.Start()
