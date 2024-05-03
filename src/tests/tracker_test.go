@@ -20,6 +20,8 @@ import (
 func TestMinerDiscovery(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
+	time.Sleep(1000 * time.Millisecond)
+
 	miners := make([]*Miner.Miner, 0)
 	for i := 0; i < 2; i++ {
 		miner := Miner.NewMiner(3000+i, 8080)

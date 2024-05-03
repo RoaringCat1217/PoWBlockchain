@@ -20,6 +20,7 @@ import (
 func TestCompleteInteractions(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
+	time.Sleep(1000 * time.Millisecond)
 	// register 6 miners
 	miners := make([]*Miner.Miner, 0)
 	for i := 0; i < 6; i++ {
@@ -74,6 +75,7 @@ func TestCompleteInteractions(t *testing.T) {
 func TestMergeBlockChainHeads(t *testing.T) {
 	tracker := NewPartitionTracker(8080)
 	tracker.Start()
+	time.Sleep(1000 * time.Millisecond)
 
 	// register 10 miners
 	miners := make([]*Miner.Miner, 0)
@@ -181,6 +183,8 @@ func TestMergeBlockChainHeads(t *testing.T) {
 func TestComputingPowerAttack(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
+	time.Sleep(1000 * time.Millisecond)
+
 	user := User.NewUser(8080)
 	// set up 6 well-behaved miners
 	miners := make([]*Miner.Miner, 0)

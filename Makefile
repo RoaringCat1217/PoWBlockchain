@@ -1,4 +1,6 @@
 # Run all tests
+build:
+
 test:
 	cd src && go clean -testcache && go test -v blockchain/tests
 

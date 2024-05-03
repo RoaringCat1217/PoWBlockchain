@@ -18,6 +18,7 @@ func TestMaliciousUser(t *testing.T) {
 	tracker := Tracker.NewTracker(8082)
 	tracker.Start()
 	defer tracker.Shutdown()
+	time.Sleep(1000 * time.Millisecond)
 
 	// Create a legitimate miner
 	legitimateMiner := Miner.NewMiner(3003, 8082)
@@ -90,6 +91,7 @@ func TestMaliciousUser(t *testing.T) {
 func TestMaliciousMiner(t *testing.T) {
 	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
+	time.Sleep(1000 * time.Millisecond)
 
 	// Create one legitimate miner
 	miner := Miner.NewMiner(3000, 8080)
