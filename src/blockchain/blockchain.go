@@ -7,7 +7,7 @@ import (
 )
 
 // TARGET - A valid block hash has its first TARGET bits be zero.
-const TARGET = 22
+const TARGET = 20
 
 type PostBody struct {
 	Content   string
