@@ -1,39 +1,13 @@
 package tests
 
 import (
-	"blockchain/tracker"
 	"blockchain/user"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
-
-// N - Number of miners to select for writing posts
-const (
-	N = 3
-)
-
-// mockTracker is a mock implementation of the tracker server
-type mockTracker struct {
-	miners []int
-}
-
-// newMockTracker creates a new instance of the mock tracker server
-func newMockTracker(miners []int) *mockTracker {
-	return &mockTracker{miners: miners}
-}
-
-// handleGetMiners handles the GET request to retrieve the list of miners
-func (t *mockTracker) handleGetMiners(w http.ResponseWriter, r *http.Request) {
-	response := tracker.PortsJson{Ports: t.miners}
-	err := json.NewEncoder(w).Encode(response)
-	if err != nil {
-		return
-	}
-}
 
 // TestNewUser tests the creation of a new user
 func TestNewUser(t *testing.T) {
