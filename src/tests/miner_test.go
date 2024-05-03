@@ -117,7 +117,7 @@ func TestMaliciousMiner(t *testing.T) {
 	}
 	resp.Body.Close()
 	// wait for a block to be mined
-	time.Sleep(10000 * time.Millisecond)
+	time.Sleep(20000 * time.Millisecond)
 
 	// tries to attack miner's /sync API with a fake post
 	fakePost, _ := postBase64.DecodeBase64()
