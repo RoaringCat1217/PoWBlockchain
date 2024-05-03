@@ -69,14 +69,14 @@ func TestMergeBlockChainHeads(t *testing.T) {
 	tracker := NewPartitionTracker(8080)
 	tracker.Start()
 
-	// register 8 miners
+	// register 10 miners
 	miners := make([]*Miner.Miner, 0)
 	for i := 0; i < 10; i++ {
 		miner := Miner.NewMiner(3000+i, 8080)
 		miner.Start()
 		miners = append(miners, miner)
 	}
-	// post, and then let them mine for sometime
+	// post two messages, and then let miners mine for some time
 	err := WriteBlockchain(3000, "Hello from 0")
 	if err != nil {
 		t.Fatalf("failed to write to miner 3000: %v", err)
@@ -99,7 +99,7 @@ func TestMergeBlockChainHeads(t *testing.T) {
 		t.Fatalf("failed to reach a consensus")
 	}
 
-	// partition the network, and post to different heads
+	// partition the network, and post one message to each head
 	t.Log("Partitioning the network...")
 	tracker.Partition(true)
 	time.Sleep(1000 * time.Millisecond)
@@ -124,7 +124,7 @@ func TestMergeBlockChainHeads(t *testing.T) {
 		t.Fatalf("failed to create two forks of a blockchain")
 	}
 
-	// merge the network again
+	// merge the network again, and post two messages
 	t.Log("Re-merging the network...")
 	tracker.Partition(false)
 	err = WriteBlockchain(3004, "Hello from 4")

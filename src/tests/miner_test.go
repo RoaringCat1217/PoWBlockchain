@@ -4,11 +4,9 @@ import (
 	"blockchain/blockchain"
 	Miner "blockchain/miner"
 	Tracker "blockchain/tracker"
-	"blockchain/user"
 	User "blockchain/user"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +22,7 @@ func TestMaliciousUserPost(t *testing.T) {
 	trackerServer := httptest.NewServer(http.HandlerFunc(mockTracker.handleGetMiners))
 	defer trackerServer.Close()
 
-	newUser := user.NewUser(extractPort(trackerServer.URL))
+	newUser := User.NewUser(extractPort(trackerServer.URL))
 
 	var receivedPosts []blockchain.PostBase64
 
@@ -74,84 +72,73 @@ func TestMaliciousUserPost(t *testing.T) {
 
 // TestMaliciousMiner - test whether the system rejects a block when a worker fakes or replays a user's post
 func TestMaliciousMiner(t *testing.T) {
-	tracker := Tracker.NewTracker(8081)
+	tracker := Tracker.NewTracker(8080)
 	tracker.Start()
-	defer tracker.Shutdown()
 
-	// Create a legitimate miner
-	legitimateMiner := Miner.NewMiner(3001, 8081)
-	legitimateMiner.Start()
-	defer legitimateMiner.Shutdown()
-
-	// Create a malicious miner
-	maliciousMiner := Miner.NewMiner(3002, 8081)
-	maliciousMiner.Start()
-	defer maliciousMiner.Shutdown()
-
-	// Create a user
-	user := User.NewUser(8081)
-
-	// User posts a legitimate message
-	legitimateContent := "Legitimate post"
-	err := user.WritePost(legitimateContent)
-	if err != nil {
-		t.Fatalf("error when posting: %v", err)
-	}
-
-	// Wait for the legitimate miner to mine the block
-	time.Sleep(5000 * time.Millisecond)
-
-	// Malicious miner attempts to replay the user's post
-	posts, err := user.ReadPosts()
-	if err != nil {
-		t.Fatalf("error reading user's posts: %v", err)
-	}
-	if len(posts) == 0 {
-		t.Fatalf("user has no posts")
-	}
-	lastPost := posts[len(posts)-1]
-	lastPostEncoded := lastPost.EncodeBase64()
-	lastPostJSON, _ := json.Marshal(lastPostEncoded)
-	resp, err := http.Post(fmt.Sprintf("http://localhost:%d/write", 3002), "application/json", bytes.NewBuffer(lastPostJSON))
-	if err != nil {
-		t.Fatalf("error replaying user's post: %v", err)
-	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected status Bad Request, but got %d", resp.StatusCode)
-	}
-
-	// Malicious miner attempts to fake the user's post
+	// Create one legitimate miner
+	miner := Miner.NewMiner(3000, 8080)
+	miner.Start()
+	// wait for everything to start
+	time.Sleep(1000 * time.Millisecond)
+	// post one message
 	privateKey := blockchain.GenerateKey()
-	fakePost := blockchain.Post{
+	post := blockchain.Post{
 		User: &privateKey.PublicKey,
 		Body: blockchain.PostBody{
-			Content:   "Fake post",
+			Content:   "Legitimate content",
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
-	fakePost.Signature = blockchain.Sign(blockchain.GenerateKey(), fakePost.Body)
-	fakePostEncoded := fakePost.EncodeBase64()
-	fakePostJSON, _ := json.Marshal(fakePostEncoded)
-	resp, err = http.Post(fmt.Sprintf("http://localhost:%d/write", 3002), "application/json", bytes.NewBuffer(fakePostJSON))
+	post.Signature = blockchain.Sign(privateKey, post.Body)
+	postBase64 := post.EncodeBase64()
+	postJSON, _ := json.Marshal(postBase64)
+	resp, err := http.Post("http://localhost:3000/write", "application/json", bytes.NewReader(postJSON))
 	if err != nil {
-		t.Fatalf("error faking user's post: %v", err)
+		t.Fatalf("error when writing blockchain: %v\n", err)
 	}
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected status Bad Request, but got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("error when writing blockchain: %v\n", err)
 	}
+	resp.Body.Close()
+	// wait for a block to be mined
+	time.Sleep(10000 * time.Millisecond)
 
-	// Wait for the miners to sync
-	time.Sleep(5000 * time.Millisecond)
+	// tries to attack miner's /sync API with a fake post
+	fakePost, _ := postBase64.DecodeBase64()
+	fakePost.Body.Content = "Malicious content"
+	fakePostBase64 := fakePost.EncodeBase64()
+	syncReq := Miner.PostsJson{}
+	syncReq.Posts = append(syncReq.Posts, fakePostBase64)
+	fakePostJson, _ := json.Marshal(syncReq)
+	resp, _ = http.Post("http://localhost:3000/sync", "application/json", bytes.NewReader(fakePostJson))
+	resp.Body.Close()
 
-	// Check that the legitimate post is on the blockchain
-	posts, err = user.ReadPosts()
+	// tries to attack miner's /sync API with a replayed post
+	resp, _ = http.Post("http://localhost:3000/sync", "application/json", bytes.NewReader(postJSON))
+	resp.Body.Close()
+
+	// tries to attack miner's /broadcast API with a very long, fake blockchain
+	fakeBlockchain := make([]blockchain.BlockBase64, 100)
+	fakeBroadcastReq := Miner.BlockChainJson{Blockchain: fakeBlockchain}
+	fakeBroadcastJson, _ := json.Marshal(fakeBroadcastReq)
+	resp, _ = http.Post("http://localhost:3000/broadcast", "application/json", bytes.NewReader(fakeBroadcastJson))
+	resp.Body.Close()
+
+	time.Sleep(10000 * time.Millisecond)
+	user := User.NewUser(8080)
+	posts, err := user.ReadPosts()
 	if err != nil {
-		t.Fatalf("error when reading: %v", err)
+		t.Fatalf("error when reading posts: %v\n", err)
 	}
+	// should have only 1 legitimate post
 	if len(posts) != 1 {
-		t.Fatalf("expected 1 post on the blockchain, got %d", len(posts))
+		t.Fatalf("wrong number of posts\n")
 	}
-	if posts[0].Body.Content != legitimateContent {
-		t.Fatalf("wrong body for post: got %s, expected %s", posts[0].Body.Content, legitimateContent)
+	if posts[0].Body.Content != "Legitimate content" {
+		t.Fatalf("wrong content of posts\n")
 	}
+
+	// clean up
+	miner.Shutdown()
+	tracker.Shutdown()
 }
