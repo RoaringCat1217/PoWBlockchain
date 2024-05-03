@@ -175,7 +175,7 @@ func TestMergeBlockChainHeads(t *testing.T) {
 // TestComputingPowerAttack - Simulate a successful computing power attack to a blockchain.
 // First 6 miners are in the system.
 // After 5 seconds, a malicious miner with 4 goroutines start attacking. This should not be successful.
-// After 10 seconds, all but 2 miners are shut down. Now the malicious miner should be able to out-compute well-behaved
+// After 10 seconds, all but 1 miner are shut down. Now the malicious miner should be able to out-compute well-behaved
 // miners.
 // After 50 seconds, the blockchain should have been attacked successfully.
 func TestComputingPowerAttack(t *testing.T) {
@@ -307,11 +307,11 @@ func TestComputingPowerAttack(t *testing.T) {
 		t.Fatalf("blockchain is attacked by malicious miners\n")
 	}
 
-	// now all but two miners are shut down
-	for i := 2; i < 6; i++ {
+	// now all but 1 miner are shut down
+	for i := 1; i < 6; i++ {
 		miners[i].Shutdown()
 	}
-	t.Log("Shut down 4 miners")
+	t.Log("Shut down 5 miners")
 	// now the malicious miner should out-compute well-behaved miners
 	time.Sleep(50000 * time.Millisecond)
 	posts, err = user.ReadPosts()
@@ -323,7 +323,7 @@ func TestComputingPowerAttack(t *testing.T) {
 	}
 
 	// clean up
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 1; i++ {
 		miners[i].Shutdown()
 	}
 	quit <- true
