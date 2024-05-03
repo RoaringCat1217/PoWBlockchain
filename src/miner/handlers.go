@@ -8,6 +8,8 @@ import (
 	"net/http"
 )
 
+// readHandler - handles /read request from a user
+// encodes and returns the miner's complete blockchain
 func (m *Miner) readHandler() (int, any) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
@@ -19,6 +21,8 @@ func (m *Miner) readHandler() (int, any) {
 	return http.StatusOK, resp
 }
 
+// writeHandler - handles /write request from a user
+// decodes, verifies and adds a user's post to miner's pool
 func (m *Miner) writeHandler(post blockchain.Post) (int, any) {
 	if !post.Verify() {
 		return http.StatusBadRequest, map[string]string{"error": "invalid post"}
@@ -39,6 +43,8 @@ func (m *Miner) writeHandler(post blockchain.Post) (int, any) {
 	return http.StatusOK, nil
 }
 
+// syncHandler - handles /sync request from a peer miner
+// unions this miner's post pool and the posts sent to the API
 func (m *Miner) syncHandler(posts []blockchain.Post) (int, any) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -62,6 +68,8 @@ func (m *Miner) syncHandler(posts []blockchain.Post) (int, any) {
 	return http.StatusOK, nil
 }
 
+// broadcastHandler - handles /broadcast request from a peer miner
+// if the incoming blockchain is valid and longer than this miner's blockchain, switch to the new blockchain
 func (m *Miner) broadcastHandler(newChain []blockchain.Block) (int, any) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
